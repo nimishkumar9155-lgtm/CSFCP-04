@@ -1,6 +1,6 @@
 # simple_add_sub_mul_div_calculator.py
 import sys
-
+#this is where it starts
 def evaluate_term(term):
     """Evaluate a term that may include * and / operators but no + or -."""
     # Split by * and / but keep operators
