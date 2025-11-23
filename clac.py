@@ -1,110 +1,76 @@
-# simple_add_sub_mul_div_calculator.py
+# simple_add_sub_calculator.py
 import sys
-#this is where it starts
-def evaluate_term(term):
-    """Evaluate a term that may include * and / operators but no + or -."""
-    # Split by * and / but keep operators
-    parts = []
-    num = ''
-    for ch in term:
-        if ch in '*/':
-            parts.append(num)
-            parts.append(ch)
-            num = ''
-        else:
-            num += ch
-    parts.append(num)
 
-    # Now evaluate left-to-right
-    result = float(parts[0])
-
-    i = 1
-    while i < len(parts):
-        op = parts[i]
-        val = float(parts[i+1])
-
-        if op == '*':
-            result *= val
-        elif op == '/':
-            if val == 0:
-                raise ZeroDivisionError("Division by zero is not allowed.")
-            result /= val
-
-        i += 2
-
-    return result
-
-
-def compute_expr(expr: str):
-    """Compute an expression containing +, -, *, / without using eval."""
+def compute_add_sub(expr: str):
+    """Compute an expression containing only + and - and numbers (ints or floats)."""
     s = expr.replace(' ', '')
     if not s:
         raise ValueError("Empty expression")
 
+    total = 0.0
     i = 0
-    tokens = []
-    current = ''
-    sign = 1
+    sign = 1           # sign to apply to the next number
+    num_str = ''       # collects digits and decimal point
+    expect_number = True  # if True, unary + / - are allowed; otherwise + / - is a binary operator
 
-    # Convert into list of signed terms
     while i < len(s):
         ch = s[i]
-
         if ch in '+-':
-            if current == '':
-                sign *= -1 if ch == '-' else 1  # unary
+            if expect_number:
+                # treat as unary sign (allow chain of + / -)
+                sign = sign * (-1 if ch == '-' else 1)
+                i += 1
             else:
-                tokens.append((sign, current))
-                current = ''
-                sign = -1 if ch == '-' else 1
+                # binary operator -> flush current number, then set sign for next number
+                if num_str == '':
+                    raise ValueError(f"Operator at unexpected place near index {i}: '{s}'")
+                total += sign * float(num_str)
+                num_str = ''
+                sign = 1 if ch == '+' else -1
+                expect_number = True
+                i += 1
+        elif ch.isdigit() or ch == '.':
+            expect_number = False
+            num_str += ch
             i += 1
         else:
-            current += ch
-            i += 1
+            raise ValueError(f"Invalid character '{ch}' in expression. Only digits, '.' and '+'/'-' allowed.")
 
-    if current == '':
-        raise ValueError("Expression ends with an operator.")
-    tokens.append((sign, current))
+    # after loop, flush last number
+    if num_str == '':
+        raise ValueError("Expression ends with an operator or is malformed.")
+    total += sign * float(num_str)
 
-    total = 0.0
-
-    # Evaluate each * / term
-    for sign, term in tokens:
-        total += sign * evaluate_term(term)
-
+    # Return int when result is whole number, else float
     if abs(total - int(total)) < 1e-12:
         return int(total)
     return total
 
-
 def repl():
-    print("Basic + / - / * / ÷ calculator. Type 'q' or 'quit' to exit.")
+    print("Basic + / - calculator. Type 'q' or 'quit' to exit.")
     while True:
         try:
             expr = input("Enter expression: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nBye.")
             break
-
         if expr.lower() in ('q', 'quit', 'exit'):
             print("Bye.")
             break
-
         if not expr:
             continue
-
         try:
-            result = compute_expr(expr)
+            result = compute_add_sub(expr)
             print("=", result)
         except Exception as e:
             print("Error:", e)
 
-
 if __name__ == "__main__":
     if len(sys.argv) > 1:
+        # allow compute from command line: python simple_add_sub_calculator.py "5+3-2"
         expr = " ".join(sys.argv[1:])
         try:
-            print(compute_expr(expr))
+            print(compute_add_sub(expr))
         except Exception as e:
             print("Error:", e)
     else:
